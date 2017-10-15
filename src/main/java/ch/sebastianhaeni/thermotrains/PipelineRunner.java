@@ -31,8 +31,8 @@ public final class PipelineRunner {
 
   private static final Logger LOG = LogManager.getLogger(PipelineRunner.class);
 
-  private static final int START_STEP = 9;
-  private static final int STOP_STEP = 9;
+  private static final int START_STEP = 5;
+  private static final int STOP_STEP = 5;
 
   private PipelineRunner() {
     // nop
@@ -40,7 +40,7 @@ public final class PipelineRunner {
 
   public static void main(@Nonnull String[] args) {
     runStep(1, () -> ExtractFrames.extractFrames(
-      "samples/calibration/gopro-checkerboard.mp4",
+      "samples/calibration/flir-checkerboard.mp4",
       "target/1-calibration"
     ));
     runStep(2, () -> CalibrateCamera.performCheckerboardCalibration(
@@ -48,11 +48,12 @@ public final class PipelineRunner {
       "target/2-calibration-found"
     ));
     runStep(3, () -> PrepareTrainFrames.prepare(
-      "samples/distorted/gopro-moving-train-1.mp4",
+      "samples/distorted/seq_02.mp4",
       "target/3-distorted"
     ));
     runStep(4, () -> Undistort.undistortImages(
-      "target/2-calibration-found/calibration.json",
+//      "target/2-calibration-found/calibration.json",
+      "samples/calibration/flir-calibration.json",
       "target/3-distorted",
       "target/4-undistorted"
     ));
