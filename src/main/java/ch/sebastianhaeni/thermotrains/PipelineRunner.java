@@ -32,7 +32,7 @@ public final class PipelineRunner {
   private static final Logger LOG = LogManager.getLogger(PipelineRunner.class);
 
   private static final int START_STEP = 5;
-  private static final int STOP_STEP = 5;
+  private static final int STOP_STEP = 6;
 
   private PipelineRunner() {
     // nop
