@@ -31,8 +31,8 @@ public final class PipelineRunner {
 
   private static final Logger LOG = LogManager.getLogger(PipelineRunner.class);
 
-  private static final int START_STEP = 3;
-  private static final int STOP_STEP = 3;
+  private static final int START_STEP = 6;
+  private static final int STOP_STEP = 6;
 
   private PipelineRunner() {
     // nop
@@ -48,7 +48,7 @@ public final class PipelineRunner {
       "target/2-calibration-found"
     ));
     runStep(3, () -> PrepareTrainFrames.prepare(
-      "src/test/csharp/Test/Resources/book.mp4",
+      "samples/distorted/seq_02.mp4",
       "target/3-distorted"
     ));
     runStep(4, () -> Undistort.undistortImages(

@@ -17,11 +17,8 @@ import ch.sebastianhaeni.thermotrains.util.FileUtil;
 import ch.sebastianhaeni.thermotrains.util.MatUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Size;
+import org.opencv.core.*;
+import org.opencv.imgproc.CLAHE;
 import org.opencv.imgproc.Imgproc;
 
 import static ch.sebastianhaeni.thermotrains.util.FileUtil.emptyFolder;
@@ -29,19 +26,12 @@ import static ch.sebastianhaeni.thermotrains.util.FileUtil.saveMat;
 import static ch.sebastianhaeni.thermotrains.util.MathUtil.median;
 import static org.opencv.core.Core.absdiff;
 import static org.opencv.imgcodecs.Imgcodecs.imread;
-import static org.opencv.imgproc.Imgproc.CHAIN_APPROX_SIMPLE;
-import static org.opencv.imgproc.Imgproc.MORPH_ELLIPSE;
-import static org.opencv.imgproc.Imgproc.RETR_EXTERNAL;
-import static org.opencv.imgproc.Imgproc.cvtColor;
-import static org.opencv.imgproc.Imgproc.dilate;
-import static org.opencv.imgproc.Imgproc.erode;
-import static org.opencv.imgproc.Imgproc.findContours;
-import static org.opencv.imgproc.Imgproc.getStructuringElement;
-import static org.opencv.imgproc.Imgproc.threshold;
+import static org.opencv.imgproc.Imgproc.*;
 
 public final class MotionCrop {
 
   private static final Logger LOG = LogManager.getLogger(MotionCrop.class);
+  private static int index = 0;
 
   private MotionCrop() {
     // nop
@@ -51,13 +41,34 @@ public final class MotionCrop {
     emptyFolder(outputFolder);
 
     List<Path> inputFiles = FileUtil.getFiles(inputFolder, "**.jpg");
-    Mat background = MatUtil.background(inputFiles.get(0).toString());
-    Map<Integer, MarginBox> bboxes = new HashMap<>();
 
+    //enhance image contrast
+    List<Mat> enhancedImages = new ArrayList<>();
     for (int i = 0; i < inputFiles.size(); i++) {
       Path inputFile = inputFiles.get(i);
       Mat img = imread(inputFile.toString());
+      Mat gray = new Mat();
+      cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
+      CLAHE clahe = Imgproc.createCLAHE(3.0, new Size(8.0, 8.0));
+      Mat histEq = new Mat(gray.rows(), gray.cols(), CvType.CV_8UC1);
+      clahe.apply(gray, histEq);
+//      Imgproc.equalizeHist(histEq, histEq);
+      FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", histEq, "07_histeq" + index);
+      enhancedImages.add(histEq);
+      index++;
+    }
+
+    index = 0;
+//    Mat background = MatUtil.background("/Users/rlaubscher/projects/bfh/thermotrains/target/steps/07_histeq0.jpg");
+    Mat background = new Mat(enhancedImages.get(0).rows(), enhancedImages.get(0).cols(), CvType.CV_8UC1, new Scalar(0,0,0));
+    Map<Integer, MarginBox> bboxes = new HashMap<>();
+
+    for (int i = 0; i < enhancedImages.size(); i++) {
+      Path inputFile = inputFiles.get(i);
+      Mat img = enhancedImages.get(i);
       Optional<MarginBox> boundingBox = findBoundingBox(img, background, .9);
+
+      index++;
 
       if (!boundingBox.isPresent()) {
         LOG.info("Found little to no motion on {}", inputFile);
@@ -104,29 +115,33 @@ public final class MotionCrop {
   @Nonnull
   static Optional<MarginBox> findBoundingBox(@Nonnull Mat source, @Nonnull Mat background, double minWidthFactor) {
     Mat dst = source.clone();
-    Mat gray = new Mat();
-    cvtColor(dst, gray, Imgproc.COLOR_BGR2GRAY);
+    Mat gray = dst;
 
     Mat diff = new Mat();
     Mat t = new Mat();
 
     // compute absolute diff between current frame and first frame
     absdiff(background, gray, diff);
-    threshold(diff, t, 40.0, 255.0, Imgproc.THRESH_BINARY);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", diff, "08_diff" + index);
+    threshold(diff, t, 125.0, 255.0, Imgproc.THRESH_BINARY + Imgproc.THRESH_OTSU);
+//    adaptiveThreshold(diff, t, 255.0, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 9, 2.0);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", t, "09_threshold" + index);
 
     // erode to get rid of small dots
-    int erodeSize = 10;
+    int erodeSize = 15;
     Mat erodeElement = getStructuringElement(MORPH_ELLIPSE,
       new Size(2 * erodeSize + 1, 2 * erodeSize + 1),
       new Point(erodeSize, erodeSize));
     erode(t, t, erodeElement);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", t, "10_erode" + index);
 
     // dilate the threshold image to fill in holes
-    int dilateSize = 50;
+    int dilateSize = 30;
     Mat dilateElement = getStructuringElement(MORPH_ELLIPSE,
       new Size(2 * dilateSize + 1, 2 * dilateSize + 1),
       new Point(dilateSize, dilateSize));
     dilate(t, t, dilateElement); // TODO this seems to be hogging the CPU hard, is there a way around this?
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", t, "11_dilate" + index);
 
     // find contours
     List<MatOfPoint> contours = new ArrayList<>();

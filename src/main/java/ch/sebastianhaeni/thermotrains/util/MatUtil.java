@@ -43,6 +43,8 @@ public final class MatUtil {
     int kernelSize = 3 * 2;
     blur(background, background, new Size(kernelSize, kernelSize));
 
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", background, "06_backgroud");
+
     return background;
   }
 }
