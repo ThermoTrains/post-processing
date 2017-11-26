@@ -1,5 +1,16 @@
 package ch.sebastianhaeni.thermotrains.internals;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
+import java.util.stream.Collectors;
+
+import javax.annotation.Nonnull;
+
 import ch.sebastianhaeni.thermotrains.internals.geometry.BoundingBox;
 import ch.sebastianhaeni.thermotrains.internals.geometry.Line;
 import ch.sebastianhaeni.thermotrains.util.MathUtil;
@@ -8,21 +19,22 @@ import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Size;
 
-import javax.annotation.Nonnull;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.Function;
-import java.util.function.ToDoubleFunction;
-import java.util.stream.Collectors;
-
-import static ch.sebastianhaeni.thermotrains.util.FileUtil.*;
+import static ch.sebastianhaeni.thermotrains.util.FileUtil.emptyFolder;
+import static ch.sebastianhaeni.thermotrains.util.FileUtil.getFiles;
+import static ch.sebastianhaeni.thermotrains.util.FileUtil.saveMat;
 import static ch.sebastianhaeni.thermotrains.util.MatUtil.crop;
-import static com.google.common.base.Preconditions.checkState;
-import static org.opencv.core.Core.*;
+import static org.opencv.core.Core.MinMaxLocResult;
+import static org.opencv.core.Core.absdiff;
+import static org.opencv.core.Core.minMaxLoc;
+import static org.opencv.core.Core.split;
 import static org.opencv.imgcodecs.Imgcodecs.imread;
-import static org.opencv.imgproc.Imgproc.*;
+import static org.opencv.imgproc.Imgproc.COLOR_BGR2HSV;
+import static org.opencv.imgproc.Imgproc.GaussianBlur;
+import static org.opencv.imgproc.Imgproc.HoughLinesP;
+import static org.opencv.imgproc.Imgproc.cvtColor;
+import static org.opencv.imgproc.Imgproc.getPerspectiveTransform;
+import static org.opencv.imgproc.Imgproc.resize;
+import static org.opencv.imgproc.Imgproc.warpPerspective;
 
 /**
  * Tries to find the train contour and rectifies it.
@@ -49,6 +61,8 @@ public final class Rectify {
     List<BoundingBox> polygons = files.stream()
       .map(file -> imread(file.toString()))
       .map(Rectify::findBoundingBox)
+      .filter(Optional::isPresent)
+      .map(Optional::get)
       .collect(Collectors.toList());
 
     BoundingBox median = getMedianBox(polygons);
@@ -70,7 +84,7 @@ public final class Rectify {
    * and return the bounding box of the two lines.
    */
   @Nonnull
-  private static BoundingBox findBoundingBox(@Nonnull Mat img) {
+  private static Optional<BoundingBox> findBoundingBox(@Nonnull Mat img) {
     Mat w = img.clone();
 
     // give it a good blur
@@ -88,31 +102,38 @@ public final class Rectify {
     Mat upperPart = crop(value, 0, 0, fullHeight - height, 0);
     Mat lowerPart = crop(value, fullHeight - height, 0, 0, 0);
 
-    Line line1 = getLine(upperPart)
-      .expand(0, img.width(), 0, fullHeight);
-    Line line2 = getLine(lowerPart)
-      .translate(0, fullHeight - height)
-      .expand(0, img.width(), 0, fullHeight);
+    Optional<Line> line1 = getLine(upperPart)
+      .map(line -> line.expand(0, img.width(), 0, fullHeight));
+    Optional<Line> line2 = getLine(lowerPart)
+      .map(line -> line
+        .translate(0, fullHeight - height)
+        .expand(0, img.width(), 0, fullHeight));
 
-    return new BoundingBox(line1, line2);
+    if (!line1.isPresent() || !line2.isPresent()) {
+      return Optional.empty();
+    }
+
+    return Optional.of(new BoundingBox(line1.get(), line2.get()));
   }
 
   /**
    * Gets the strongest line based on y frequency changes.
    */
   @Nonnull
-  private static Line getLine(@Nonnull Mat src) {
+  private static Optional<Line> getLine(@Nonnull Mat src) {
     Mat lines = findMaxYFrequency(src);
 
     HoughLinesP(lines, lines, 1.0, Math.PI / 180, LINE_THRESHOLD, MIN_LINE_LENGTH, MAX_LINE_GAP);
 
-    checkState(lines.rows() > 0, "Didn't find at least 1 line, cannot create bounding box");
+    if (lines.rows() == 0) {
+      return Optional.empty();
+    }
 
     double[] val = lines.get(0, 0);
     Point p1 = new Point(val[0] * FREQUENCY_RESOLUTION, val[1] * FREQUENCY_RESOLUTION);
     Point p2 = new Point(val[2] * FREQUENCY_RESOLUTION, val[3] * FREQUENCY_RESOLUTION);
 
-    return new Line(p1, p2);
+    return Optional.of(new Line(p1, p2));
   }
 
   /**
@@ -157,8 +178,9 @@ public final class Rectify {
   }
 
   @Nonnull
-  private static Point medianPoint(@Nonnull Collection<BoundingBox> polygons,
-                                   @Nonnull Function<BoundingBox, Point> mapper) {
+  private static Point medianPoint(
+    @Nonnull Collection<BoundingBox> polygons,
+    @Nonnull Function<BoundingBox, Point> mapper) {
 
     double x = median(polygons, polygon -> mapper.apply(polygon).x);
     double y = median(polygons, polygon -> mapper.apply(polygon).y);
@@ -166,8 +188,9 @@ public final class Rectify {
     return new Point(x, y);
   }
 
-  private static double median(@Nonnull Collection<BoundingBox> polygons,
-                               @Nonnull ToDoubleFunction<? super BoundingBox> mapper) {
+  private static double median(
+    @Nonnull Collection<BoundingBox> polygons,
+    @Nonnull ToDoubleFunction<? super BoundingBox> mapper) {
 
     Double[] values = polygons.stream()
       .mapToDouble(mapper)
