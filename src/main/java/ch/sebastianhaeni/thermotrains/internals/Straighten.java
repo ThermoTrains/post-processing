@@ -3,10 +3,8 @@ package ch.sebastianhaeni.thermotrains.internals;
 import ch.sebastianhaeni.thermotrains.util.FileUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
+import org.opencv.core.*;
+import org.opencv.imgproc.CLAHE;
 import org.opencv.imgproc.Imgproc;
 
 import javax.annotation.Nonnull;
@@ -62,7 +60,7 @@ public final class Straighten {
     FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", srcGray, "01_gray" + index);
 
     // darken image so only pixels on the train remain white (heat sources)
-    darkenImage(srcGray);
+    srcGray = enhanceContrast(srcGray);
 
     // find lines using hough transform
     Mat lines = findLines(srcGray);
@@ -88,9 +86,13 @@ public final class Straighten {
   /**
    * Darken image so only pixels on the train remain white (heat sources)
    */
-  private static void darkenImage(@Nonnull Mat srcGray) {
-    srcGray.convertTo(srcGray, -1, 1, DARKEN_AMOUNT);
-    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", srcGray, "02_darker" + index);
+  private static Mat enhanceContrast(@Nonnull Mat srcGray) {
+    CLAHE clahe = Imgproc.createCLAHE(2.0, new Size(4.0, 4.0));
+    Mat histEq = new Mat(srcGray.rows(), srcGray.cols(), CvType.CV_8UC1);
+    clahe.apply(srcGray, histEq);
+//    Imgproc.equalizeHist(srcGray, histEq);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", histEq, "02_enhancedContrast" + index);
+    return histEq;
   }
 
   /**
@@ -100,10 +102,10 @@ public final class Straighten {
   private static Mat findLines(@Nonnull Mat srcGray) {
     Mat edges = new Mat();
     Mat lines = new Mat();
-//    int kernelSize = 3 * 2;
+    int kernelSize = 3 * 3;
 
-//    blur(srcGray, srcGray, new Size(kernelSize, kernelSize));
-//    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", srcGray, "03_blur");
+    blur(srcGray, srcGray, new Size(kernelSize, kernelSize));
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", srcGray, "03_blur" + index);
     Canny(srcGray, edges, THRESHOLD_1, THRESHOLD_2);
     FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", edges, "04_canny" + index);
     HoughLinesP(edges, lines, 1.0, Math.PI / 180, HOUGH_THRESHOLD, MIN_LINE_LENGTH, MAX_LINE_GAP);
@@ -121,12 +123,7 @@ public final class Straighten {
         line(edges, start, end, new Scalar(0, 0, 255), 3);
       }
     }
-
     FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", edges, "05_hough" + index);
-
-//    if(index == 0) {
-//      System.exit(0);
-//    }
 
     return lines;
   }
@@ -135,11 +132,7 @@ public final class Straighten {
    * Calculates the gradient angle of a line.
    */
   private static double calculateAngle(double x1, double y1, double x2, double y2) {
-//    LOG.info(Math.toDegrees(Math.atan2(x2 - x1, y2 - y1)));
     double angle = Math.toDegrees(Math.atan2(x2 - x1, y2 - y1)) - 90;
-//    LOG.info(angle);
-    // Keep angle between 0 and 360
-//    angle = angle + Math.ceil(-angle / 360) * 360;
     if(Math.abs(angle) > 30) {
       angle = 0.0;
     }

@@ -31,8 +31,8 @@ public final class PipelineRunner {
 
   private static final Logger LOG = LogManager.getLogger(PipelineRunner.class);
 
-  private static final int START_STEP = 6;
-  private static final int STOP_STEP = 6;
+  private static final int START_STEP = 7;
+  private static final int STOP_STEP = 7;
 
   private PipelineRunner() {
     // nop
@@ -48,7 +48,7 @@ public final class PipelineRunner {
       "target/2-calibration-found"
     ));
     runStep(3, () -> PrepareTrainFrames.prepare(
-      "samples/distorted/seq_02.mp4",
+      "samples/distorted/2017-11-23@23-13-01-IR.seq.mp4",
       "target/3-distorted"
     ));
     runStep(4, () -> Undistort.undistortImages(
@@ -67,7 +67,7 @@ public final class PipelineRunner {
     ));
     runStep(7, () -> Rectify.transform(
 //      "target/6-cropped",
-      "target/5-straightened",
+      "target/3-distorted",
       "target/7-rectified"
     ));
     runStep(8, () -> TrainStitcher.stitchTrain(

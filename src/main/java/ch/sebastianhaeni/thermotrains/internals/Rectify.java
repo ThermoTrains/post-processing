@@ -1,7 +1,13 @@
 package ch.sebastianhaeni.thermotrains.internals;
 
+import ch.sebastianhaeni.thermotrains.internals.geometry.BoundingBox;
+import ch.sebastianhaeni.thermotrains.internals.geometry.Line;
+import ch.sebastianhaeni.thermotrains.util.FileUtil;
+import ch.sebastianhaeni.thermotrains.util.MathUtil;
+import org.opencv.core.*;
+
+import javax.annotation.Nonnull;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -9,32 +15,11 @@ import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
-
-import ch.sebastianhaeni.thermotrains.internals.geometry.BoundingBox;
-import ch.sebastianhaeni.thermotrains.internals.geometry.Line;
-import ch.sebastianhaeni.thermotrains.util.MathUtil;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Size;
-
-import static ch.sebastianhaeni.thermotrains.util.FileUtil.emptyFolder;
-import static ch.sebastianhaeni.thermotrains.util.FileUtil.getFiles;
-import static ch.sebastianhaeni.thermotrains.util.FileUtil.saveMat;
+import static ch.sebastianhaeni.thermotrains.util.FileUtil.*;
 import static ch.sebastianhaeni.thermotrains.util.MatUtil.crop;
-import static org.opencv.core.Core.MinMaxLocResult;
-import static org.opencv.core.Core.absdiff;
-import static org.opencv.core.Core.minMaxLoc;
-import static org.opencv.core.Core.split;
+import static org.opencv.core.Core.*;
 import static org.opencv.imgcodecs.Imgcodecs.imread;
-import static org.opencv.imgproc.Imgproc.COLOR_BGR2HSV;
-import static org.opencv.imgproc.Imgproc.GaussianBlur;
-import static org.opencv.imgproc.Imgproc.HoughLinesP;
-import static org.opencv.imgproc.Imgproc.cvtColor;
-import static org.opencv.imgproc.Imgproc.getPerspectiveTransform;
-import static org.opencv.imgproc.Imgproc.resize;
-import static org.opencv.imgproc.Imgproc.warpPerspective;
+import static org.opencv.imgproc.Imgproc.*;
 
 /**
  * Tries to find the train contour and rectifies it.
@@ -45,6 +30,11 @@ public final class Rectify {
   private static final int LINE_THRESHOLD = 50;
   private static final double MIN_LINE_LENGTH = 50.0;
   private static final double MAX_LINE_GAP = 30.0;
+
+  private static final int CANNY_THRESHOLD_1 = 10;
+  private static final int CANNY_THRESHOLD_2 = 35;
+
+  private static int index = 0;
 
   private Rectify() {
     // nop
@@ -57,20 +47,44 @@ public final class Rectify {
     emptyFolder(outputFolder);
 
     List<Path> files = getFiles(inputFolder, "**.jpg");
+    files.remove(0);
+    files.remove(0);
 
-    List<BoundingBox> polygons = files.stream()
+    //enhance image contrast
+//    List<Mat> enhancedImages = MotionCrop.getEnhancedImages(files);
+//    List<Mat> enhancedImages = files.stream()
+//      .map(file -> imread(file.toString()))
+//      .collect(Collectors.toList());
+
+    index = 0;
+
+//    Mat background = new Mat(enhancedImages.get(0).rows(), enhancedImages.get(0).cols(), CvType.CV_8UC1, new Scalar(0,0,0));
+//    Mat background = enhancedImages.get(0);
+//    enhancedImages.remove(0);
+//    List<Optional<MarginBox>> polygons = enhancedImages.stream()
+//      .map(img -> MotionCrop.findBoundingBox(img, background, .9))
+//      .collect(Collectors.toList());
+//
+//    List<BoundingBox> bboxes = polygons.stream()
+//      .map(p -> new BoundingBox(new Point(p.get().getLeft(), p.get().getTop()), new Point(p.get().getRight(), p.get().getTop()), new Point(p.get().getRight(), p.get().getBottom()), new Point(p.get().getLeft(), p.get().getBottom())))
+//      .collect(Collectors.toList());
+//    List<BoundingBox> polygons = enhancedImages.stream()
+//      .map(Rectify::findBoundingBox)
+//      .collect(Collectors.toList());
+
+    List<BoundingBox> bboxes = files.stream()
       .map(file -> imread(file.toString()))
       .map(Rectify::findBoundingBox)
       .filter(Optional::isPresent)
       .map(Optional::get)
       .collect(Collectors.toList());
 
-    BoundingBox median = getMedianBox(polygons);
+    BoundingBox median = getMedianBox(bboxes);
     BoundingBox rectangle = rectifyBox(median);
     Mat perspectiveTransform = getPerspectiveTransform(median.getMat(), rectangle.getMat());
 
-    for (int i = 0; i < files.size(); i++) {
-      Mat img = imread(files.get(i).toString());
+    for (int i = 1; i <= files.size(); i++) {
+      Mat img = imread(files.get(i-1).toString());
 
       // apply matrix
       warpPerspective(img, img, perspectiveTransform, new Size(img.width(), img.height()));
@@ -87,20 +101,22 @@ public final class Rectify {
   private static Optional<BoundingBox> findBoundingBox(@Nonnull Mat img) {
     Mat w = img.clone();
 
-    // give it a good blur
-    GaussianBlur(w, w, new Size(0, 0), 4);
+    Mat gray = new Mat();
+    cvtColor(w, gray, COLOR_BGR2GRAY);
 
-    // get value from HSV
-    cvtColor(w, w, COLOR_BGR2HSV);
-    List<Mat> channels = new ArrayList<>();
-    split(w, channels);
-    Mat value = channels.get(2);
+//    // give it a good blur
+    int sigma = 4;
+    int kernelSize = 4 * sigma + 1;
+    GaussianBlur(gray, gray, new Size(kernelSize, kernelSize), sigma);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", gray, "13_blurred" + index);
 
-    int fullHeight = value.height();
+    int fullHeight = gray.height();
     int height = fullHeight / 3;
 
-    Mat upperPart = crop(value, 0, 0, fullHeight - height, 0);
-    Mat lowerPart = crop(value, fullHeight - height, 0, 0, 0);
+    Mat upperPart = crop(gray, 0, 0, fullHeight - height, 0);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", upperPart, "14_top" + index);
+    Mat lowerPart = crop(gray, fullHeight - height, 0, 0, 0);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", lowerPart, "15_bottom" + index);
 
     Optional<Line> line1 = getLine(upperPart)
       .map(line -> line.expand(0, img.width(), 0, fullHeight));
@@ -108,6 +124,8 @@ public final class Rectify {
       .map(line -> line
         .translate(0, fullHeight - height)
         .expand(0, img.width(), 0, fullHeight));
+
+    index++;
 
     if (!line1.isPresent() || !line2.isPresent()) {
       return Optional.empty();
@@ -121,19 +139,61 @@ public final class Rectify {
    */
   @Nonnull
   private static Optional<Line> getLine(@Nonnull Mat src) {
-    Mat lines = findMaxYFrequency(src);
+//    Mat lines = findMaxYFrequency(src);
+    Mat freq = findMaxYFrequency(src);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", freq, "16_maxFreq" + index);
 
-    HoughLinesP(lines, lines, 1.0, Math.PI / 180, LINE_THRESHOLD, MIN_LINE_LENGTH, MAX_LINE_GAP);
+    // canny edge filter
+    Mat edge = new Mat();
+    Canny(src, edge, CANNY_THRESHOLD_1, CANNY_THRESHOLD_2);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", edge, "16_canny" + index);
+
+
+//    HoughLinesP(lines, lines, 1.0, Math.PI / 180, LINE_THRESHOLD, MIN_LINE_LENGTH, MAX_LINE_GAP);
+    Mat lines = new Mat();
+    HoughLines(edge, lines, 1.0, Math.PI / 180, LINE_THRESHOLD);
 
     if (lines.rows() == 0) {
       return Optional.empty();
     }
 
-    double[] val = lines.get(0, 0);
-    Point p1 = new Point(val[0] * FREQUENCY_RESOLUTION, val[1] * FREQUENCY_RESOLUTION);
-    Point p2 = new Point(val[2] * FREQUENCY_RESOLUTION, val[3] * FREQUENCY_RESOLUTION);
+    Mat srcColor = new Mat(src.rows(), src.cols(), CvType.CV_8UC3);
+    cvtColor(src, srcColor, COLOR_GRAY2RGB);
 
-    return Optional.of(new Line(p1, p2));
+    double maxHyp = -1;
+    Line longestLine = new Line(new Point(0.0, 0.0), new Point(0.0, 0.0));
+
+    for (int i = 0; i < lines.cols(); i++) {
+      double data[] = lines.get(0, i);
+      double rho1 = data[0];
+      double theta1 = data[1];
+      double cosTheta = Math.cos(theta1);
+      double sinTheta = Math.sin(theta1);
+      double x0 = cosTheta * rho1;
+      double y0 = sinTheta * rho1;
+      Point pt1 = new Point(x0 + 10000 * (-sinTheta), y0 + 10000 * cosTheta);
+      Point pt2 = new Point(x0 - 10000 * (-sinTheta), y0 - 10000 * cosTheta);
+      double x = Math.max(pt1.x, pt2.x) - Math.min(pt1.x, pt2.x);
+      double y = Math.max(pt1.y, pt2.y) - Math.min(pt1.y, pt2.y);
+      double hyp = Math.hypot(x, y);
+      if(hyp > maxHyp) {
+        maxHyp = hyp;
+        longestLine = new Line(pt1, pt2);
+      }
+    }
+
+    line(srcColor, longestLine.getP1(), longestLine.getP2(), new Scalar(0, 0, 255), 2);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", srcColor, "16_hough" + index);
+
+    //    double[] val = lines.get(0, 0);
+//    Point p1 = new Point(val[0] * FREQUENCY_RESOLUTION, val[1] * FREQUENCY_RESOLUTION);
+//    Point p2 = new Point(val[2] * FREQUENCY_RESOLUTION, val[3] * FREQUENCY_RESOLUTION);
+//
+//    cvtColor(src, src, COLOR_GRAY2BGR);
+//    line(src, p1, p2, new Scalar(0, 0, 255), 3);
+//    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", src, "16_hough" + index);
+
+    return Optional.of(longestLine);
   }
 
   /**

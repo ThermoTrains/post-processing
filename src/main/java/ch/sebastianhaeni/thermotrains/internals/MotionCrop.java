@@ -43,20 +43,7 @@ public final class MotionCrop {
     List<Path> inputFiles = FileUtil.getFiles(inputFolder, "**.jpg");
 
     //enhance image contrast
-    List<Mat> enhancedImages = new ArrayList<>();
-    for (int i = 0; i < inputFiles.size(); i++) {
-      Path inputFile = inputFiles.get(i);
-      Mat img = imread(inputFile.toString());
-      Mat gray = new Mat();
-      cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
-      CLAHE clahe = Imgproc.createCLAHE(3.0, new Size(8.0, 8.0));
-      Mat histEq = new Mat(gray.rows(), gray.cols(), CvType.CV_8UC1);
-      clahe.apply(gray, histEq);
-//      Imgproc.equalizeHist(histEq, histEq);
-      FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", histEq, "07_histeq" + index);
-      enhancedImages.add(histEq);
-      index++;
-    }
+    List<Mat> enhancedImages = getEnhancedImages(inputFiles);
 
     index = 0;
 //    Mat background = MatUtil.background("/Users/rlaubscher/projects/bfh/thermotrains/target/steps/07_histeq0.jpg");
@@ -120,6 +107,8 @@ public final class MotionCrop {
     Mat diff = new Mat();
     Mat t = new Mat();
 
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", background, "08_diff_background" + index);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", gray, "08_diff_gray" + index);
     // compute absolute diff between current frame and first frame
     absdiff(background, gray, diff);
     FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", diff, "08_diff" + index);
@@ -194,5 +183,28 @@ public final class MotionCrop {
   private static IntStream streamCoordinates(@Nonnull MatOfPoint contour, int index) {
     return IntStream.rangeClosed(0, contour.rows() - 1)
       .map(i -> (int) contour.get(i, 0)[index]);
+  }
+
+  /**
+   * Returns a list of contrast enhanced images
+   */
+  @Nonnull
+  public static List<Mat> getEnhancedImages(@Nonnull List<Path> inputFiles) {
+    int index = 0;
+    List<Mat> enhancedImages = new ArrayList<>();
+    for (int i = 0; i < inputFiles.size(); i++) {
+      Path inputFile = inputFiles.get(i);
+      Mat img = imread(inputFile.toString());
+      Mat gray = new Mat();
+      cvtColor(img, gray, Imgproc.COLOR_BGR2GRAY);
+      CLAHE clahe = Imgproc.createCLAHE(3.0, new Size(8.0, 8.0));
+      Mat histEq = new Mat(gray.rows(), gray.cols(), CvType.CV_8UC1);
+      clahe.apply(gray, histEq);
+      //      Imgproc.equalizeHist(histEq, histEq);
+      FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", histEq, "07_histeq" + index);
+      enhancedImages.add(histEq);
+      index++;
+    }
+    return enhancedImages;
   }
 }

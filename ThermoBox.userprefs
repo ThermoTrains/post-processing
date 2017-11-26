@@ -1,0 +1,21 @@
+﻿<Properties StartupConfiguration="{308451F1-52CF-4360-9107-0BA13603878B}|Default">
+  <MonoDevelop.Ide.Workbench ActiveDocument="src/main/csharp/IRCompressor/CompressorComponent.cs">
+    <Files>
+      <File FileName="src/main/csharp/Config/App.config" Line="1" Column="1" />
+      <File FileName="src/main/csharp/IRReader/packages.config" Line="1" Column="1" />
+      <File FileName="src/main/csharp/IRReader/Program.cs" Line="1" Column="1" />
+      <File FileName="src/main/csharp/VisibleLightReader/packages.config" Line="1" Column="1" />
+      <File FileName="src/main/csharp/VisibleLightReader/Program.cs" Line="1" Column="1" />
+      <File FileName="src/main/csharp/IRCompressor/packages.config" Line="8" Column="12" />
+      <File FileName="src/main/csharp/IRCompressor/Program.cs" Line="1" Column="1" />
+      <File FileName="src/main/csharp/IRCompressor/CompressorComponent.cs" Line="1" Column="1" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MultiItemStartupConfigurations />
+  <MonoDevelop.Ide.ItemProperties.Delivery.IRCompressor PreferredExecutionTarget="MonoDevelop.Default" />
+</Properties>

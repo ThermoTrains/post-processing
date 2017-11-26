@@ -56,8 +56,8 @@ public final class Undistort {
 
     List<Path> inputFiles = FileUtil.getFiles(inputFolder, "**.jpg");
 
-    for (int i = 0; i < inputFiles.size(); i++) {
-      Mat img = imread(inputFiles.get(i).toString());
+    for (int i = 1; i <= inputFiles.size(); i++) {
+      Mat img = imread(inputFiles.get(i-1).toString());
       Mat dst = new Mat();
       undistort(img, dst, calibration.getCameraMatrix(), calibration.getDistCoeffs(), optimalNewCameraMatrix);
 

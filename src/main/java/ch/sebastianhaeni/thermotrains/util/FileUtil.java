@@ -43,6 +43,8 @@ public final class FileUtil {
       throw new IllegalStateException("Cannot read files from folder: " + inputFolder);
     }
 
+    Arrays.sort(files);
+
     List<Path> inputFiles = Arrays.stream(files)
       .map(File::toPath)
       .filter(matcher::matches)
