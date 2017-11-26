@@ -17,8 +17,8 @@ import static org.opencv.imgproc.Imgproc.*;
 
 public final class SplitTrain {
 
-  private static final int MIN_CAR_LENGTH_IN_PX = 2000;
-  private static final double PEAK_THRESHOLD = 4.0;
+  private static final int MIN_CAR_LENGTH_IN_PX = 1500;
+  private static final double PEAK_THRESHOLD = 2.0;
   private static final int DILATION_SIZE = 10;
 
   private SplitTrain() {
