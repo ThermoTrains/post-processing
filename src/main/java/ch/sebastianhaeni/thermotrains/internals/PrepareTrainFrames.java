@@ -6,6 +6,7 @@ import ch.sebastianhaeni.thermotrains.util.FileUtil;
 import ch.sebastianhaeni.thermotrains.util.MatUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
 import javax.annotation.Nonnull;
@@ -20,7 +21,7 @@ import static org.opencv.imgcodecs.Imgcodecs.imread;
 public final class PrepareTrainFrames {
 
   private static final Logger LOG = LogManager.getLogger(PrepareTrainFrames.class);
-  private static final int NUMBER_OF_FRAMES = 150;
+  private static final int NUMBER_OF_FRAMES = 250;
   private static final int DIRECTION_COUNT_THRESHOLD = 3;
 
   private PrepareTrainFrames() {
@@ -52,7 +53,8 @@ public final class PrepareTrainFrames {
   private static Direction getDirection(@Nonnull String outputFolder) {
     List<Path> inputFiles = FileUtil.getFiles(outputFolder, "**.jpg");
 
-    Mat background = MatUtil.background(inputFiles.get(0).toString());
+    // use a black frame as background since we cannot guarantee that the first frame is just background
+    Mat background = new Mat(MatUtil.background(inputFiles.get(0).toString()).size(), CvType.CV_8U);
 
     int rightCount = 0;
     int leftCount = 0;
