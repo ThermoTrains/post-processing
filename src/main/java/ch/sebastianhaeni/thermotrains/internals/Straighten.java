@@ -86,7 +86,7 @@ public final class Straighten {
   /**
    * Darken image so only pixels on the train remain white (heat sources)
    */
-  private static Mat enhanceContrast(@Nonnull Mat srcGray) {
+  public static Mat enhanceContrast(@Nonnull Mat srcGray) {
     CLAHE clahe = Imgproc.createCLAHE(2.0, new Size(4.0, 4.0));
     Mat histEq = new Mat(srcGray.rows(), srcGray.cols(), CvType.CV_8UC1);
     clahe.apply(srcGray, histEq);
