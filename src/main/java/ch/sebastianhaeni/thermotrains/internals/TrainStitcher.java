@@ -1,5 +1,6 @@
 package ch.sebastianhaeni.thermotrains.internals;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,14 +17,9 @@ import org.opencv.core.Scalar;
 
 import static ch.sebastianhaeni.thermotrains.util.FileUtil.emptyFolder;
 import static ch.sebastianhaeni.thermotrains.util.FileUtil.saveMat;
-import static org.opencv.core.Core.NORM_MINMAX;
-import static org.opencv.core.Core.hconcat;
-import static org.opencv.core.Core.minMaxLoc;
-import static org.opencv.core.Core.normalize;
+import static org.opencv.core.Core.*;
 import static org.opencv.imgcodecs.Imgcodecs.imread;
-import static org.opencv.imgproc.Imgproc.TM_SQDIFF_NORMED;
-import static org.opencv.imgproc.Imgproc.matchTemplate;
-import static org.opencv.imgproc.Imgproc.rectangle;
+import static org.opencv.imgproc.Imgproc.*;
 
 public final class TrainStitcher {
 
@@ -88,6 +84,11 @@ public final class TrainStitcher {
     }
 
     saveMat(outputFolder, result, "result");
+//    cvtColor(result, result, COLOR_BGR2GRAY);
+//    applyColorMap(result, result, COLORMAP_HOT);
+    Mat lut = imread("/Users/rlaubscher/Desktop/Iron Gradient.png");
+    LUT(result, lut, result);
+    saveMat(outputFolder, result, "result_false_color");
   }
 
   /**
