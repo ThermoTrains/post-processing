@@ -5,6 +5,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -52,6 +53,7 @@ public final class FileUtil {
       LOG.warn("Could not find any files in {} with pattern {}", inputFolder, globPattern);
     }
 
+    Collections.sort(inputFiles);
     return inputFiles;
   }
 
