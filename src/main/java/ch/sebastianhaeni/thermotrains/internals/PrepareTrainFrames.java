@@ -39,58 +39,59 @@ public final class PrepareTrainFrames {
     // This is bad in a way because we have to check a lot of empty frames where the train isn't even in the frame yet.
 
     // extract half the frames from half of the video
-    ExtractFrames.extractFrames(inputFile, outputFolder, FORWARD, NUMBER_OF_FRAMES / 2, .5);
+    ExtractFrames.extractFrames(inputFile, outputFolder, FORWARD, NUMBER_OF_FRAMES);
 
-    LOG.info("Analyzing frames to find direction");
-    Direction direction = getDirection(outputFolder);
-    LOG.info("The train's direction is {}", direction);
-
-    // extract all frames in the direction we just found
-    ExtractFrames.extractFrames(inputFile, outputFolder, direction, NUMBER_OF_FRAMES);
+//    LOG.info("Analyzing frames to find direction");
+//    Direction direction = getDirection(outputFolder);
+//    LOG.info("The train's direction is {}", direction);
+//
+//    // extract all frames in the direction we just found
+//    ExtractFrames.extractFrames(inputFile, outputFolder, direction, NUMBER_OF_FRAMES);
   }
 
   @Nonnull
   private static Direction getDirection(@Nonnull String outputFolder) {
-    List<Path> inputFiles = FileUtil.getFiles(outputFolder, "**.jpg");
-
-    // use a black frame as background since we cannot guarantee that the first frame is just background
-    Mat background = new Mat(MatUtil.background(inputFiles.get(0).toString()).size(), CvType.CV_8U);
-
-    int rightCount = 0;
-    int leftCount = 0;
-
-    MarginBox last = null;
-
-    for (Path file : inputFiles) {
-      Mat img = imread(file.toString());
-      Optional<MarginBox> boundingBox = findBoundingBox(img, background, .1);
-
-      if (!boundingBox.isPresent()) {
-        // no motion
-        continue;
-      }
-
-      if (last == null) {
-        last = boundingBox.get();
-        continue;
-      }
-
-      if (boundingBox.get().getLeft() - last.getLeft() < 0) {
-        rightCount++;
-      } else if (boundingBox.get().getRight() - last.getRight() > 0) {
-        leftCount++;
-      }
-
-      last = boundingBox.get();
-
-      if (rightCount > DIRECTION_COUNT_THRESHOLD) {
-        return FORWARD;
-      }
-      if (leftCount > DIRECTION_COUNT_THRESHOLD) {
-        return Direction.REVERSE;
-      }
-    }
-
-    throw new IllegalStateException("Could not find any motion");
+//    List<Path> inputFiles = FileUtil.getFiles(outputFolder, "**.jpg");
+//
+//    // use a black frame as background since we cannot guarantee that the first frame is just background
+//    Mat background = new Mat(MatUtil.background(inputFiles.get(0).toString()).size(), CvType.CV_8U);
+//
+//    int rightCount = 0;
+//    int leftCount = 0;
+//
+//    MarginBox last = null;
+//
+//    for (Path file : inputFiles) {
+//      Mat img = imread(file.toString());
+//      Optional<MarginBox> boundingBox = findBoundingBox(img, background, .1);
+//
+//      if (!boundingBox.isPresent()) {
+//        // no motion
+//        continue;
+//      }
+//
+//      if (last == null) {
+//        last = boundingBox.get();
+//        continue;
+//      }
+//
+//      if (boundingBox.get().getLeft() - last.getLeft() < 0) {
+//        rightCount++;
+//      } else if (boundingBox.get().getRight() - last.getRight() > 0) {
+//        leftCount++;
+//      }
+//
+//      last = boundingBox.get();
+//
+//      if (rightCount > DIRECTION_COUNT_THRESHOLD) {
+//        return FORWARD;
+//      }
+//      if (leftCount > DIRECTION_COUNT_THRESHOLD) {
+//        return Direction.REVERSE;
+//      }
+//    }
+//
+//    throw new IllegalStateException("Could not find any motion");
+    return FORWARD;
   }
 }

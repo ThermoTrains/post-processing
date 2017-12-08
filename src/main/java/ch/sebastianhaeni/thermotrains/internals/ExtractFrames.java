@@ -36,6 +36,7 @@ import static ch.sebastianhaeni.thermotrains.util.FileUtil.saveMat;
 import static org.opencv.core.Core.flip;
 import static org.opencv.core.CvType.CV_16UC1;
 import static org.opencv.core.CvType.CV_8UC1;
+import static org.opencv.core.CvType.CV_8UC3;
 import static org.opencv.imgproc.Imgproc.cvtColor;
 
 public final class ExtractFrames {
@@ -95,36 +96,37 @@ public final class ExtractFrames {
 
     int i = isForward ? 0 : frameCount;
 
-    //GetCompressionParameters
-    int minValue = 0;
-    double inverseScale = 1.0;
+//    //GetCompressionParameters
+//    int minValue = 0;
+//    double inverseScale = 1.0;
+//
+//    try {
+//      StringBuffer sb = new StringBuffer();
+//      Process p = Runtime.getRuntime().exec("exiftool -s -s -s -Comment " + inputVideoFilename);
+//      p.waitFor();
+//      BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+//
+//      String line = "";
+//      while ((line = reader.readLine())!= null) {
+//        sb.append(line + "\n");
+//      }
+//      String output = sb.toString().replaceAll("\\n", "");
+//      String[] values = output.split("/");
+//      minValue = Integer.valueOf(values[0]);
+//      inverseScale = Double.valueOf(values[1].replace(',', '.'));
+//      inverseScale = 1 / inverseScale;
+//      LOG.info(minValue);
+//      LOG.info(inverseScale);
+//    }
+//    catch (Exception e) {
+//      e.printStackTrace();
+//    }
 
-    try {
-      StringBuffer sb = new StringBuffer();
-      Process p = Runtime.getRuntime().exec("exiftool -s -s -s -Comment " + inputVideoFilename);
-      p.waitFor();
-      BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-
-      String line = "";
-      while ((line = reader.readLine())!= null) {
-        sb.append(line + "\n");
-      }
-      String output = sb.toString().replaceAll("\\n", "");
-      String[] values = output.split("/");
-      minValue = Integer.valueOf(values[0]);
-      inverseScale = Double.valueOf(values[1].replace(',', '.'));
-      inverseScale = 1 / inverseScale;
-      LOG.info(minValue);
-      LOG.info(inverseScale);
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-    }
+    Mat frame = new Mat();
 
     while (termination.test(i) && frameCounter <= framesToExtract) {
       i = increment.apply(i);
 
-      Mat frame = new Mat(512, 640, CV_8UC1);
       boolean success = capture.read(frame);
       if (!success) {
         LOG.warn("Cannot read frame {}", i);
@@ -141,35 +143,36 @@ public final class ExtractFrames {
         flip(frame, frame, 1);
       }
 
-      Mat gray = new Mat();
-      cvtColor(frame, gray, Imgproc.COLOR_BGR2GRAY);
+//      Mat gray = new Mat();
+//      cvtColor(frame, gray, Imgproc.COLOR_BGR2GRAY);
 
-      Mat denormalized = new Mat();
+//      Mat denormalized = new Mat();
+//
+//      gray.convertTo(denormalized, CV_16UC1, inverseScale, minValue);
+//
+//      StringBuffer sb = new StringBuffer();
+////      sb.append("[");
+//      for (int row = 0; row < gray.rows(); row++) {
+//        for (int col = 0; col < gray.cols(); col++) {
+//          double[] data = gray.get(row, col);
+//          sb.append(data[0]);
+//          sb.append(" ");
+//        }
+//        sb.append("\n");
+//      }
+////      sb.append("]");
+////      LOG.info(sb.toString());
+//
+//      try(  PrintWriter out = new PrintWriter( "target/steps/gray_raw_data.txt" )  ){
+//        out.println( sb.toString() );
+//        out.close();
+//      }
+//      catch (FileNotFoundException e) {
+//        e.printStackTrace();
+//      }
 
-      gray.convertTo(denormalized, CV_16UC1, inverseScale, minValue);
-
-      StringBuffer sb = new StringBuffer();
-//      sb.append("[");
-      for (int row = 0; row < gray.rows(); row++) {
-        for (int col = 0; col < gray.cols(); col++) {
-          double[] data = gray.get(row, col);
-          sb.append(data[0]);
-          sb.append(" ");
-        }
-        sb.append("\n");
-      }
-//      sb.append("]");
-//      LOG.info(sb.toString());
-
-      try(  PrintWriter out = new PrintWriter( "target/steps/gray_raw_data.txt" )  ){
-        out.println( sb.toString() );
-        out.close();
-      }
-      catch (FileNotFoundException e) {
-        e.printStackTrace();
-      }
-
-      saveMat(outputFolder, gray, ++frameCounter);
+      saveMat(outputFolder, frame, ++frameCounter);
+//      frame.release();
     }
   }
 }

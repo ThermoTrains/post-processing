@@ -102,7 +102,8 @@ public final class MotionCrop {
   @Nonnull
   static Optional<MarginBox> findBoundingBox(@Nonnull Mat source, @Nonnull Mat background, double minWidthFactor) {
     Mat dst = source.clone();
-    Mat gray = dst;
+    Mat gray = new Mat();
+    cvtColor(dst, gray, COLOR_BGR2GRAY);
 
     Mat diff = new Mat();
     Mat t = new Mat();

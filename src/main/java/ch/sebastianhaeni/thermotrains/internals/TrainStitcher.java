@@ -86,7 +86,7 @@ public final class TrainStitcher {
     saveMat(outputFolder, result, "result");
 //    cvtColor(result, result, COLOR_BGR2GRAY);
 //    applyColorMap(result, result, COLORMAP_HOT);
-    Mat lut = imread("/Users/rlaubscher/Desktop/Iron Gradient.png");
+    Mat lut = imread("samples/thermal/Iron Gradient.png");
     LUT(result, lut, result);
     saveMat(outputFolder, result, "result_false_color");
   }
