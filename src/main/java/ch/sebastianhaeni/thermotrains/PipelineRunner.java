@@ -70,6 +70,7 @@ public final class PipelineRunner {
     ));
     runStep(10, () -> MetadataExtractor.exportScaling(
       "/Users/rlaubscher/Desktop/review/2017-11-25@11-17-28-IR.seq.mp4",
+      "target/8-stitched/result.jpg",
       "target/10-metadata"
     ));
   }
