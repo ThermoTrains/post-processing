@@ -2,15 +2,7 @@ package ch.sebastianhaeni.thermotrains;
 
 import javax.annotation.Nonnull;
 
-import ch.sebastianhaeni.thermotrains.internals.CalibrateCamera;
-import ch.sebastianhaeni.thermotrains.internals.ExtractFrames;
-import ch.sebastianhaeni.thermotrains.internals.MotionCrop;
-import ch.sebastianhaeni.thermotrains.internals.PrepareTrainFrames;
-import ch.sebastianhaeni.thermotrains.internals.Rectify;
-import ch.sebastianhaeni.thermotrains.internals.SplitTrain;
-import ch.sebastianhaeni.thermotrains.internals.Straighten;
-import ch.sebastianhaeni.thermotrains.internals.TrainStitcher;
-import ch.sebastianhaeni.thermotrains.internals.Undistort;
+import ch.sebastianhaeni.thermotrains.internals.*;
 import ch.sebastianhaeni.thermotrains.util.Procedure;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,8 +23,8 @@ public final class PipelineRunner {
 
   private static final Logger LOG = LogManager.getLogger(PipelineRunner.class);
 
-  private static final int START_STEP = 9;
-  private static final int STOP_STEP = 9;
+  private static final int START_STEP = 10;
+  private static final int STOP_STEP = 10;
 
   private PipelineRunner() {
     // nop
@@ -75,6 +67,10 @@ public final class PipelineRunner {
     runStep(9, () -> SplitTrain.cut(
       "target/8-stitched",
       "target/9-final"
+    ));
+    runStep(10, () -> MetadataExtractor.exportScaling(
+      "/Users/rlaubscher/Desktop/review/2017-11-25@11-17-28-IR.seq.mp4",
+      "target/10-metadata"
     ));
   }
 
