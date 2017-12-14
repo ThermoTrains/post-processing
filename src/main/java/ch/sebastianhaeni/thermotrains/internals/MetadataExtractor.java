@@ -13,6 +13,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
+import java.nio.file.Path;
+import java.util.List;
 
 import static ch.sebastianhaeni.thermotrains.util.FileUtil.emptyFolder;
 
@@ -27,45 +29,48 @@ public final class MetadataExtractor {
     //nop
   }
 
-  public static void exportScaling(String videoFile, String jpegFile, String outputFolder) {
+  public static void exportScaling(String videoFile, String sourceFolder, String outputFolder) {
     emptyFolder(outputFolder);
     getMetadata(videoFile);
-    writeMetadata(jpegFile, outputFolder);
+    writeMetadata(sourceFolder, outputFolder);
   }
 
-  private static void writeMetadata(String srcFile, String outputFolder) {
-    File src = new File(srcFile);
-    File dst = FileUtil.getFile(outputFolder, "result_with_metadata.jpg");
+  private static void writeMetadata(String srcFolder, String outputFolder) {
+    List<Path> srcFiles = FileUtil.getFiles(srcFolder, "**.jpg");
 
-    try (FileOutputStream fos = new FileOutputStream(dst);
-      OutputStream os = new BufferedOutputStream(fos)) {
+    for (Path srcFile : srcFiles) {
 
-      TiffOutputSet outputSet = null;
-      final ImageMetadata metadata = Imaging.getMetadata(src);
-      final JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
+      File src = srcFile.toFile();
+      File dst = FileUtil.getFile(outputFolder, src.getName());
 
-      if (null != jpegMetadata) {
-        final TiffImageMetadata exif = jpegMetadata.getExif();
+      try (FileOutputStream fos = new FileOutputStream(dst); OutputStream os = new BufferedOutputStream(fos)) {
 
-        if (null != exif) {
-          outputSet = exif.getOutputSet();
+        TiffOutputSet outputSet = null;
+        final ImageMetadata metadata = Imaging.getMetadata(src);
+        final JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
+
+        if (null != jpegMetadata) {
+          final TiffImageMetadata exif = jpegMetadata.getExif();
+
+          if (null != exif) {
+            outputSet = exif.getOutputSet();
+          }
         }
+
+        if (null == outputSet) {
+          outputSet = new TiffOutputSet();
+        }
+
+        final TiffOutputDirectory exifDirectory = outputSet.getOrCreateExifDirectory();
+        exifDirectory.removeField(ExifTagConstants.EXIF_TAG_USER_COMMENT);
+        exifDirectory.add(ExifTagConstants.EXIF_TAG_USER_COMMENT, _metadata);
+
+        new ExifRewriter().updateExifMetadataLossless(src, os, outputSet);
       }
-
-      if (null == outputSet) {
-        outputSet = new TiffOutputSet();
+      catch (Exception e) {
+        e.printStackTrace();
       }
-
-      final TiffOutputDirectory exifDirectory = outputSet.getOrCreateExifDirectory();
-      exifDirectory.removeField(ExifTagConstants.EXIF_TAG_USER_COMMENT);
-      exifDirectory.add(ExifTagConstants.EXIF_TAG_USER_COMMENT, _metadata);
-
-      new ExifRewriter().updateExifMetadataLossless(src, os, outputSet);
     }
-    catch (Exception e) {
-      e.printStackTrace();
-    }
-
   }
 
   private static void getMetadata(String inputFile) {
