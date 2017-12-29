@@ -34,8 +34,8 @@ public final class SplitTrain {
     int kernelSize = 3 * 2;
     blur(hsv, hsv, new Size(kernelSize, kernelSize));
 
-    Scalar lower = new Scalar(0, 0, 38);
-    Scalar upper = new Scalar(255, 255, 255);
+    Scalar lower = new Scalar(0, 0, 0);
+    Scalar upper = new Scalar(255, 255, 38);
 
     Mat dst = new Mat();
     inRange(hsv, lower, upper, dst);
@@ -45,7 +45,7 @@ public final class SplitTrain {
       new Size(2 * DILATION_SIZE + 1, 2 * DILATION_SIZE + 1),
       new Point(DILATION_SIZE, DILATION_SIZE));
 
-    dilate(dst, dst, dilationElement);
+    erode(dst, dst, dilationElement);
 
     Mat cropped = crop(dst);
 
@@ -56,7 +56,7 @@ public final class SplitTrain {
       int withinRange = 0;
 
       for (int j = 0; j < cropped.rows(); j++) {
-        if (cropped.get(j, i)[0] == 0) {
+        if (cropped.get(j, i)[0] > 0) {
           withinRange++;
         }
       }
