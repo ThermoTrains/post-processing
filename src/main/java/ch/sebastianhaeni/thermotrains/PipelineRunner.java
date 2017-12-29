@@ -23,8 +23,8 @@ public final class PipelineRunner {
 
   private static final Logger LOG = LogManager.getLogger(PipelineRunner.class);
 
-  private static final int START_STEP = 10;
-  private static final int STOP_STEP = 10;
+  private static final int START_STEP = 9;
+  private static final int STOP_STEP = 9;
 
   private PipelineRunner() {
     // nop

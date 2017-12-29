@@ -1,10 +1,7 @@
 package ch.sebastianhaeni.thermotrains.internals;
 
-import ch.sebastianhaeni.thermotrains.util.MathUtil;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.opencv.core.*;
 
 import javax.annotation.Nonnull;
 import java.nio.file.Path;
@@ -18,8 +15,8 @@ import static org.opencv.imgproc.Imgproc.*;
 public final class SplitTrain {
 
   private static final int MIN_CAR_LENGTH_IN_PX = 1500;
-  private static final double PEAK_THRESHOLD = 2.0;
-  private static final int DILATION_SIZE = 10;
+  private static final double PEAK_THRESHOLD = 0.7;
+  private static final int DILATION_SIZE = 7;
 
   private SplitTrain() {
     // nop
@@ -34,27 +31,32 @@ public final class SplitTrain {
     Mat hsv = new Mat();
     cvtColor(img, hsv, COLOR_BGR2HSV);
 
-    Scalar lower = new Scalar(0, 0, 140);
+    int kernelSize = 3 * 2;
+    blur(hsv, hsv, new Size(kernelSize, kernelSize));
+
+    Scalar lower = new Scalar(0, 0, 38);
     Scalar upper = new Scalar(255, 255, 255);
 
     Mat dst = new Mat();
-    inRange(img, lower, upper, dst);
+    inRange(hsv, lower, upper, dst);
 
     // dilate the threshold image to fill in holes
     Mat dilationElement = getStructuringElement(MORPH_ELLIPSE,
       new Size(2 * DILATION_SIZE + 1, 2 * DILATION_SIZE + 1),
       new Point(DILATION_SIZE, DILATION_SIZE));
 
-    erode(dst, dst, dilationElement);
+    dilate(dst, dst, dilationElement);
 
-    Integer[] hist = new Integer[dst.cols()];
+    Mat cropped = crop(dst);
 
-    for (int i = 0; i < dst.cols(); i++) {
+    int[] hist = new int[cropped.cols()];
+
+    for (int i = 0; i < cropped.cols(); i++) {
 
       int withinRange = 0;
 
-      for (int j = 0; j < dst.rows(); j++) {
-        if (dst.get(j, i)[0] > 0) {
+      for (int j = 0; j < cropped.rows(); j++) {
+        if (cropped.get(j, i)[0] == 0) {
           withinRange++;
         }
       }
@@ -62,12 +64,12 @@ public final class SplitTrain {
       hist[i] = withinRange;
     }
 
-    double median = MathUtil.median(hist);
+    int max = NumberUtils.max(hist);
 
     // find peaks
     int lastPeak = -1;
     for (int i = 0; i < hist.length; i++) {
-      if (hist[i] < median * PEAK_THRESHOLD) {
+      if (hist[i] < max * PEAK_THRESHOLD) {
         hist[i] = 0;
       } else {
         hist[i] = 1;
@@ -80,6 +82,8 @@ public final class SplitTrain {
       }
     }
 
+    // last pixel must be peak, to crop correctly
+    hist[hist.length - 1] = 1;
     int prev = 0;
     int i = 0;
     for (int x = 0; x < hist.length; x++) {
@@ -96,5 +100,15 @@ public final class SplitTrain {
       prev = x;
       saveMat(outputFolder, car, ++i);
     }
+  }
+
+  /**
+   * Crops the {@link Mat} to 2/3 of its height.
+   */
+  @Nonnull
+  private static Mat crop(@Nonnull Mat mat) {
+    Rect roi = new Rect(0, 0, mat.cols(), mat.rows() * 2/3);
+
+    return new Mat(mat, roi);
   }
 }
