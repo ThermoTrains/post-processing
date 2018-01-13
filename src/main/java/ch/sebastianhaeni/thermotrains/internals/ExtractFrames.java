@@ -61,7 +61,7 @@ public final class ExtractFrames {
 
     boolean isForward = direction == Direction.FORWARD;
     int frameCount = (int) (capture.get(Videoio.CAP_PROP_FRAME_COUNT) * lengthFactor);
-    int framesBetween = frameCount / framesToExtract;
+    int framesBetween = (frameCount / framesToExtract) + 1;
     int frameCounter = 0;
 
     Predicate<Integer> termination = isForward ?
@@ -73,17 +73,18 @@ public final class ExtractFrames {
 
     int i = isForward ? 0 : frameCount;
 
-    while (termination.test(i) && frameCounter < framesToExtract) {
+    Mat frame = new Mat();
+
+    while (termination.test(i) && frameCounter <= framesToExtract) {
       i = increment.apply(i);
 
-      Mat frame = new Mat();
       boolean success = capture.read(frame);
       if (!success) {
         LOG.warn("Cannot read frame {}", i);
         continue;
       }
 
-      if (i == 0 || i % framesBetween != 0) {
+      if (i > 1 && (i == 0 || i % framesBetween != 0)) {
         // do not extract every frame, but once in a while so we have a fixed number of frames
         // not correlated to the frame count
         continue;
