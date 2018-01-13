@@ -46,8 +46,9 @@ public final class MotionCrop {
     List<Mat> enhancedImages = getEnhancedImages(inputFiles);
 
     index = 0;
-//    Mat background = MatUtil.background("/Users/rlaubscher/projects/bfh/thermotrains/target/steps/07_histeq0.jpg");
-    Mat background = new Mat(enhancedImages.get(0).rows(), enhancedImages.get(0).cols(), CvType.CV_8UC1, new Scalar(0,0,0));
+//    Mat background = MatUtil.background("/Users/rlaubscher/projects/bfh/post-processing/target/steps/07_histeq0.jpg");
+    Mat background = enhancedImages.get(0);
+//    Mat background = new Mat(enhancedImages.get(0).rows(), enhancedImages.get(0).cols(), CvType.CV_8UC1, new Scalar(0,0,0));
     Map<Integer, MarginBox> bboxes = new HashMap<>();
 
     for (int i = 0; i < enhancedImages.size(); i++) {
@@ -103,27 +104,28 @@ public final class MotionCrop {
   static Optional<MarginBox> findBoundingBox(@Nonnull Mat source, @Nonnull Mat background, double minWidthFactor) {
     Mat dst = source.clone();
     Mat gray = new Mat();
-    cvtColor(dst, gray, COLOR_BGR2GRAY);
+//    cvtColor(dst, gray, COLOR_BGR2GRAY);
+    gray = dst;
 
     Mat diff = new Mat();
     Mat t = new Mat();
 
-    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", background, "08_diff_background" + index);
-    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", gray, "08_diff_gray" + index);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", background, "08_diff_background" + index);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", gray, "08_diff_gray" + index);
     // compute absolute diff between current frame and first frame
     absdiff(background, gray, diff);
-    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", diff, "08_diff" + index);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", diff, "08_diff" + index);
     threshold(diff, t, 125.0, 255.0, Imgproc.THRESH_BINARY + Imgproc.THRESH_OTSU);
 //    adaptiveThreshold(diff, t, 255.0, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 9, 2.0);
-    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", t, "09_threshold" + index);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", t, "09_threshold" + index);
 
     // erode to get rid of small dots
-    int erodeSize = 15;
+    int erodeSize = 5;
     Mat erodeElement = getStructuringElement(MORPH_ELLIPSE,
       new Size(2 * erodeSize + 1, 2 * erodeSize + 1),
       new Point(erodeSize, erodeSize));
     erode(t, t, erodeElement);
-    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", t, "10_erode" + index);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", t, "10_erode" + index);
 
     // dilate the threshold image to fill in holes
     int dilateSize = 30;
@@ -131,7 +133,7 @@ public final class MotionCrop {
       new Size(2 * dilateSize + 1, 2 * dilateSize + 1),
       new Point(dilateSize, dilateSize));
     dilate(t, t, dilateElement); // TODO this seems to be hogging the CPU hard, is there a way around this?
-    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", t, "11_dilate" + index);
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", t, "11_dilate" + index);
 
     // find contours
     List<MatOfPoint> contours = new ArrayList<>();
@@ -143,7 +145,15 @@ public final class MotionCrop {
       return Optional.empty();
     }
 
-    MatOfPoint largestContour = contours.get(0);
+    Mat contourImg = new Mat(t.size(), t.type());
+    cvtColor(t, t, COLOR_GRAY2BGR);
+    for (int i = 0; i < contours.size(); i++) {
+//      Imgproc.drawContours(contourImg, contours, i, new Scalar(0, 0, 255), 1);
+      Imgproc.drawContours(t, contours, i, new Scalar(0, 0, 255), 3);
+    }
+    FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", t, "12_contour" + index);
+
+    MatOfPoint largestContour = getLargestContour(contours);
 
     // find bounding box of contour
     MarginBox bbox = new MarginBox();
@@ -162,6 +172,22 @@ public final class MotionCrop {
     }
 
     return Optional.of(bbox);
+  }
+  /**
+   * Crops the {@link Mat} to the bounding box.
+   */
+  @Nonnull
+  private static MatOfPoint getLargestContour(@Nonnull List<MatOfPoint> contours) {
+    double max = 0;
+    int maxIndex = 0;
+    for (int i = 0; i < contours.size(); i++) {
+      double area = contourArea( contours.get(i) );
+      if(area > max) {
+        max = area;
+        maxIndex = i;
+      }
+    }
+    return contours.get(maxIndex);
   }
 
   /**
@@ -202,7 +228,7 @@ public final class MotionCrop {
       Mat histEq = new Mat(gray.rows(), gray.cols(), CvType.CV_8UC1);
       clahe.apply(gray, histEq);
       //      Imgproc.equalizeHist(histEq, histEq);
-      FileUtil.saveMat("/Users/rlaubscher/projects/bfh/thermotrains/target/steps", histEq, "07_histeq" + index);
+      FileUtil.saveMat("/Users/rlaubscher/projects/bfh/post-processing/target/steps", histEq, "07_histeq" + index);
       enhancedImages.add(histEq);
       index++;
     }

@@ -10,10 +10,9 @@ import javax.annotation.Nonnull;
 
 import ch.sebastianhaeni.thermotrains.util.FileUtil;
 import ch.sebastianhaeni.thermotrains.util.MatUtil;
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
+import org.opencv.core.*;
+import org.opencv.imgproc.CLAHE;
+import org.opencv.imgproc.Imgproc;
 
 import static ch.sebastianhaeni.thermotrains.util.FileUtil.emptyFolder;
 import static ch.sebastianhaeni.thermotrains.util.FileUtil.saveMat;
@@ -87,8 +86,13 @@ public final class TrainStitcher {
 //    cvtColor(result, result, COLOR_BGR2GRAY);
 //    applyColorMap(result, result, COLORMAP_HOT);
     Mat lut = imread("samples/thermal/Iron Gradient.png");
-    LUT(result, lut, result);
-    saveMat(outputFolder, result, "result_false_color");
+    cvtColor(result, result, Imgproc.COLOR_BGR2GRAY);
+    CLAHE clahe = Imgproc.createCLAHE(3.0, new Size(8.0, 8.0));
+    Mat histEq = new Mat(result.rows(), result.cols(), CvType.CV_8UC1);
+    clahe.apply(result, histEq);
+    cvtColor(histEq, histEq, COLOR_GRAY2BGR);
+    LUT(histEq, lut, histEq);
+    saveMat(outputFolder, histEq, "result_false_color");
   }
 
   /**
