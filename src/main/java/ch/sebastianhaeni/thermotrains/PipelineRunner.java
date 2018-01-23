@@ -2,15 +2,7 @@ package ch.sebastianhaeni.thermotrains;
 
 import javax.annotation.Nonnull;
 
-import ch.sebastianhaeni.thermotrains.internals.CalibrateCamera;
-import ch.sebastianhaeni.thermotrains.internals.ExtractFrames;
-import ch.sebastianhaeni.thermotrains.internals.MotionCrop;
-import ch.sebastianhaeni.thermotrains.internals.PrepareTrainFrames;
-import ch.sebastianhaeni.thermotrains.internals.Rectify;
-import ch.sebastianhaeni.thermotrains.internals.SplitTrain;
-import ch.sebastianhaeni.thermotrains.internals.Straighten;
-import ch.sebastianhaeni.thermotrains.internals.TrainStitcher;
-import ch.sebastianhaeni.thermotrains.internals.Undistort;
+import ch.sebastianhaeni.thermotrains.internals.*;
 import ch.sebastianhaeni.thermotrains.util.Procedure;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,7 +23,7 @@ public final class PipelineRunner {
 
   private static final Logger LOG = LogManager.getLogger(PipelineRunner.class);
 
-  private static final int START_STEP = 7;
+  private static final int START_STEP = 3;
   private static final int STOP_STEP = 7;
 
   private PipelineRunner() {
@@ -39,6 +31,8 @@ public final class PipelineRunner {
   }
 
   public static void main(@Nonnull String[] args) {
+    String videoFileName = "/Users/rlaubscher/Desktop/phase2/2017-12-23@00-06-15-IR.seq.mp4";
+
     runStep(1, () -> ExtractFrames.extractFrames(
       "samples/calibration/flir-checkerboard.mp4",
       "target/1-calibration"
@@ -48,7 +42,7 @@ public final class PipelineRunner {
       "target/2-calibration-found"
     ));
     runStep(3, () -> PrepareTrainFrames.prepare(
-      "samples/distorted/new/2018-01-02@16-46-32-IR.seq.mp4",
+      videoFileName,
 //      "/Users/rlaubscher/Desktop/review/2017-11-29@15-02-13-visible.mp4",
       "target/3-distorted"
     ));
@@ -57,26 +51,32 @@ public final class PipelineRunner {
       "target/3-distorted",
       "target/4-undistorted"
     ));
-    runStep(5, () -> Straighten.straighten(
-      "target/4-undistorted",
-      "target/5-straightened"
-    ));
+//    runStep(5, () -> Straighten.straighten(
+//      "target/4-undistorted",
+//      "target/5-straightened"
+//    ));
 //    runStep(5, () -> MotionCrop.cropToMotion(
 //      "target/5-straightened",
 //      "target/6-cropped"
 //    ));
-    runStep(6, () -> Rectify.transform(
+    runStep(5, () -> Rectify.transform(
       "target/4-undistorted",
 //      "target/5-straightened",
       "target/7-rectified"
     ));
-    runStep(7, () -> TrainStitcher.stitchTrain(
+    runStep(6, () -> TrainStitcher.stitchTrain(
       "target/7-rectified",
       "target/8-stitched"
     ));
-    runStep(8, () -> SplitTrain.cut(
+//    runStep(8, () -> SplitTrain.cut(
+//      "target/8-stitched",
+//      "target/9-final"
+//    ));
+
+    runStep(7, () -> MetadataExtractor.exportScaling(
+      videoFileName,
       "target/8-stitched",
-      "target/9-final"
+      "target/10-metadata"
     ));
   }
 

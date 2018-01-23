@@ -16,6 +16,7 @@ import java.util.Optional;
 
 import static ch.sebastianhaeni.thermotrains.internals.MotionCrop.findBoundingBox;
 import static ch.sebastianhaeni.thermotrains.util.Direction.FORWARD;
+import static ch.sebastianhaeni.thermotrains.util.Direction.REVERSE;
 import static org.opencv.imgcodecs.Imgcodecs.imread;
 
 public final class PrepareTrainFrames {
